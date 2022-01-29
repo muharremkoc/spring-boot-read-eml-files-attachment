@@ -10,4 +10,7 @@ import java.util.List;
 public interface EMLFileService {
      List<byte[]> getBytesFilesInEMLFile(MultipartFile emlFile) throws IOException, MessagingException;
      void getEMLFilesInDirectory() throws MessagingException, IOException;
+     void display(MultipartFile file) throws MessagingException, IOException;
+
+
 }

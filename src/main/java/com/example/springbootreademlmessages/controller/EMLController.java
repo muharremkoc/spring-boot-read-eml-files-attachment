@@ -29,4 +29,10 @@ public class EMLController {
     public void getEMLFilesInDirectory() throws MessagingException, IOException {
       emlFileService.getEMLFilesInDirectory();
     }
+
+    @PostMapping (value = "/eml/multipart", consumes = "multipart/form-data")
+    public void getMultipartFileInEMLFile(@RequestPart MultipartFile emlFile) throws IOException, MessagingException {
+        emlFileService.display(emlFile);
+    }
+
 }
