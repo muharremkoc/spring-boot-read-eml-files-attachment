@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Properties;
 @Service
 public class EmailServiceImpl implements EMLFileService {
-    private static final String EML_INPUT = "C:\\Users\\P1922\\Desktop\\test1";
+    private static final String EML_INPUT = "Your_Folder_Path";
 
     @Override
     public List<byte[]> getBytesFilesInEMLFile(MultipartFile emlFile) throws IOException, MessagingException {
