@@ -1,5 +1,6 @@
 package com.example.springbootreademlmessages.service;
 
+import com.example.springbootreademlmessages.model.FileInfo;
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,7 @@ import javax.mail.Part;
 import javax.mail.Session;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,11 +23,11 @@ public class EmailServiceImpl implements EMLFileService {
     private static final String EML_INPUT = "Your_Folder_Path";
 
     @Override
-    public List<byte[]> getBytesFilesInEMLFile(MultipartFile emlFile) throws IOException, MessagingException {
+    public List<FileInfo> getBytesFilesInEMLFile(MultipartFile emlFile) throws IOException, MessagingException {
     return files(emlFile.getBytes());
     }
-    private List<byte[]> files(byte[] bytes) throws MessagingException, IOException {
-        List<byte[]> getBytes = new ArrayList<>();
+    private List<FileInfo> files(byte[] bytes) throws MessagingException, IOException {
+        List<FileInfo> getInfos = new ArrayList<>();
         InputStream source = new ByteArrayInputStream(bytes);
 
         MimeMessage message = new MimeMessage(null, source);
@@ -38,15 +40,24 @@ public class EmailServiceImpl implements EMLFileService {
         for (int partCount = 0; partCount < numberOfParts; partCount++) {
             MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
             String a=Part.ATTACHMENT;
-            String b= part.getDisposition();;
+            String b= part.getDisposition();
+            String[] contentTypeParts = part.getContentType().split("\\;");
+            String contentType = (contentTypeParts.length>0) ? contentTypeParts[0] : part.getContentType();
             if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
+
+                byte[] data = part.getInputStream().readAllBytes();
                 // byte[]  getBytes = IOUtils.toByteArray(part.getInputStream());
-                getBytes.add(IOUtils.toByteArray(part.getInputStream()));
 
+              FileInfo fileInfo=FileInfo.builder()
+                        .name(MimeUtility.decodeText(part.getFileName()))
+                        .type(contentType)
+                        .size(Long.valueOf(data.length))
+                        .data(data)
+                        .build();
+                getInfos.add(fileInfo);
             }
-
         }
-        return getBytes;
+        return getInfos;
     }
 
     @Override

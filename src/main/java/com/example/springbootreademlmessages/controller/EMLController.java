@@ -1,5 +1,6 @@
 package com.example.springbootreademlmessages.controller;
 
+import com.example.springbootreademlmessages.model.FileInfo;
 import com.example.springbootreademlmessages.service.EMLFileService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class EMLController {
     final EMLFileService emlFileService;
 
     @PostMapping (value = "/eml", consumes = "multipart/form-data")
-    public List<byte[]> getBytesFilesInEMLFile(@RequestPart MultipartFile emlFile) throws IOException, MessagingException {
+    public List<FileInfo> getBytesFilesInEMLFile(@RequestPart MultipartFile emlFile) throws IOException, MessagingException {
 
         return emlFileService.getBytesFilesInEMLFile(emlFile);
     }
