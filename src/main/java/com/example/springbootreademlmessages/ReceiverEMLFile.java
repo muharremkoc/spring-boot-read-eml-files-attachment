@@ -88,8 +88,8 @@ public class ReceiverEMLFile {
     public static void main(String[] args) {
         String host = "imap.gmail.com";
         String port = "993";
-        String userName = "earsivdas";
-        String password = "Bilmem.123";
+        String userName = "****";
+        String password = "****";
 
 
         ReceiverEMLFile receiver = new ReceiverEMLFile();
