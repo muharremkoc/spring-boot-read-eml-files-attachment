@@ -19,24 +19,17 @@ import javax.mail.internet.MimeBodyPart;
 
 public class ReceiverEMLFile {
 
-    private String downloadDirectory;
-
-    public void setSaveDirectory(String dir) {
-        this.downloadDirectory = dir;
-    }
-
-
     public void downloadEmailAttachments(String host, String port, String userName, String password) throws NoSuchProviderException, MessagingException, IOException {
         Properties properties = setMailServerProperties(host, port);
         Store store = setSessionStoreProperties(userName, password, properties);
         Folder inbox = store.getFolder("INBOX");
         inbox.open(Folder.READ_ONLY);
         Message[] arrayMessages = inbox.getMessages();
-        for (int i = 0; i < arrayMessages.length; i++) {
+        for (int i = 0; i < 5; i++) {
             Message message = arrayMessages[i];
             Address[] fromAddress = message.getFrom();
             var a=message.getFrom()[0].toString();
-           if (a.equals("muharrem.koc@detaysoft.com")){
+
                String from = a;
                String subject = message.getSubject();
 
@@ -51,7 +44,7 @@ public class ReceiverEMLFile {
                System.out.println(" Subject: " + subject);
                System.out.println(" Sent Date: " + sentDate);
                System.out.println(" Attachments: " + attachments);
-           }
+
         }
         inbox.close(false);
         store.close();
@@ -66,7 +59,6 @@ public class ReceiverEMLFile {
             MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
             if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
                 String file = part.getFileName();
-                part.saveFile(downloadDirectory + File.separator + part.getFileName());
                 downloadedAttachments.add(file);
             }
         }
@@ -77,36 +69,34 @@ public class ReceiverEMLFile {
     public Properties setMailServerProperties(String host, String port) {
         Properties properties = new Properties();
 
-        properties.put("mail.pop3.host", host);
-        properties.put("mail.pop3.port", port);
+        properties.put("mail.imap.host", host);
+        properties.put("mail.imap.port", port);
 
-        properties.setProperty("mail.pop3.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-        properties.setProperty("mail.pop3.socketFactory.fallback", "false");
-        properties.setProperty("mail.pop3.socketFactory.port", String.valueOf(port));
+        properties.setProperty("mail.imap.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+        properties.setProperty("mail.imap.socketFactory.fallback", "false");
+        properties.setProperty("mail.imap.socketFactory.port", String.valueOf(port));
         return properties;
     }
 
     public Store setSessionStoreProperties(String userName, String password, Properties properties) throws NoSuchProviderException, MessagingException {
         Session session = Session.getDefaultInstance(properties);
 
-        Store store = session.getStore("pop3");
+        Store store = session.getStore("imap");
         store.connect(userName, password);
         return store;
     }
     public static void main(String[] args) {
-        String host = "pop.gmail.com";
-        String port = "995";
-        String userName = "";
-        String password = "";
+        String host = "imap.gmail.com";
+        String port = "993";
+        String userName = "earsivdas";
+        String password = "Bilmem.123";
 
-        String saveDirectory = "C:\\Users\\P1922\\Desktop\\Attachments";
 
         ReceiverEMLFile receiver = new ReceiverEMLFile();
-        receiver.setSaveDirectory(saveDirectory);
         try {
             receiver.downloadEmailAttachments(host, port, userName, password);
         } catch (NoSuchProviderException ex) {
-            System.out.println("No provider for pop3.");
+            System.out.println("No provider for imap");
             ex.printStackTrace();
         } catch (MessagingException ex) {
             System.out.println("Could not connect to the message store");

@@ -1,32 +1,45 @@
 package com.example.springbootreademlmessages.service;
 
+import com.example.springbootreademlmessages.mapper.FileMapper;
+import com.example.springbootreademlmessages.mapper.FileMapperImpl;
 import com.example.springbootreademlmessages.model.FileInfo;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.activation.MimetypesFileTypeMap;
+import javax.mail.BodyPart;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
 import javax.mail.Part;
-import javax.mail.Session;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeUtility;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.net.FileNameMap;
+import java.net.URLConnection;
+import java.util.*;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class EmailServiceImpl implements EMLFileService {
-    private static final String EML_INPUT = "Your_Folder_Path";
+    private static final String EML_INPUT = "C:\\Users\\P1922\\Desktop\\mailIleti";
+
+    private final Environment environment;
+    final FileMapper fileMapper;
 
     @Override
     public List<FileInfo> getBytesFilesInEMLFile(MultipartFile emlFile) throws IOException, MessagingException {
     return files(emlFile.getBytes());
     }
     private List<FileInfo> files(byte[] bytes) throws MessagingException, IOException {
+        FileInfo fileInfo=new FileInfo();
         List<FileInfo> getInfos = new ArrayList<>();
         InputStream source = new ByteArrayInputStream(bytes);
 
@@ -39,21 +52,40 @@ public class EmailServiceImpl implements EMLFileService {
         int numberOfParts = multiPart.getCount();
         for (int partCount = 0; partCount < numberOfParts; partCount++) {
             MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
-            String a=Part.ATTACHMENT;
-            String b= part.getDisposition();
+
             String[] contentTypeParts = part.getContentType().split("\\;");
             String contentType = (contentTypeParts.length>0) ? contentTypeParts[0] : part.getContentType();
+            Boolean isSupportedContentType = Arrays.stream(environment.getProperty("supported.content.type", String[].class)).anyMatch(x -> Objects.equals(x, contentType));
+
             if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
+                if ((part.getFileName() == null && !isSupportedContentType))  {
+                    part.setFileName("TestFiles");
+                    if (part.getContentType().contains("message/rfc822")) {
+                        files(part.getInputStream().readAllBytes()).stream().forEach(fileInfo1 ->{
+                            getInfos.add(fileInfo1);
+                        });
+                    }
+                    log.error("This Attachment is Not Supported");
+                }
+
+                log.info("file name : "+part.getFileName());
+                log.info("file type : "+contentType);
 
                 byte[] data = part.getInputStream().readAllBytes();
-                // byte[]  getBytes = IOUtils.toByteArray(part.getInputStream());
-
+/*
               FileInfo fileInfo=FileInfo.builder()
                         .name(MimeUtility.decodeText(part.getFileName()))
                         .type(contentType)
                         .size(Long.valueOf(data.length))
                         .data(data)
                         .build();
+ */
+                 fileInfo= FileInfo.builder()
+                         .name(MimeUtility.decodeText(part.getFileName()))
+                         .type(part.getContentType())
+                         .size(Long.valueOf(data.length))
+                         .data(data)
+                         .build();
                 getInfos.add(fileInfo);
             }
         }
@@ -70,28 +102,30 @@ public class EmailServiceImpl implements EMLFileService {
 
     @Override
     public void display(MultipartFile file) throws MessagingException, IOException {
-        Properties props = System.getProperties();
-        props.put("mail.host", "muharrem.koc@detaysoft.com");
-        props.put("mail.transport.protocol", "smtp");
-
-        Session mailSession = Session.getDefaultInstance(props, null);
         InputStream source = new ByteArrayInputStream(file.getBytes());
-        MimeMessage message = new MimeMessage(mailSession,source);
+        MimeMessage message = new MimeMessage(null,source);
 
 
         System.out.println("Subject : " + message.getSubject());
-        System.out.println("From : " + message.getFrom()[0]);
         Multipart multiPart = (Multipart) message.getContent();
 
         //int numberOfParts = multiPart.getCount();
         for (int partCount = 0; partCount < multiPart.getCount(); partCount++) {
             MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
             if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
-                String attahment = part.getFileName();
+                String attachment = part.getFileName();
                 //part.saveFile(file);
-                System.out.println("Body : " +attahment);
+                if (attachment==null&& part.getContentType().contains("message/rfc822")) {
+                    log.info(part.getContentType());
+                    if (attachment.endsWith("message/rfc822")) {
+                        attachment="Test.eml";
+                               part.setFileName(attachment);
+                    }
+                }
+
+                System.out.println("Body : " +attachment);
                 byte[] e=IOUtils.toByteArray(part.getInputStream());
-                Files.write(Path.of("./target/" + attahment),e);
+                //Files.write(Path.of("./target/" + attahment),e);
 
 
                 System.out.println();
@@ -103,18 +137,14 @@ public class EmailServiceImpl implements EMLFileService {
     private void listFilesForFolder(File folder) throws MessagingException, IOException {
 
         List<List> allBytesList=new ArrayList<>();
-        for (File fileEntry : folder.listFiles()) {
+        for (File fileEntry : Objects.requireNonNull(folder.listFiles())) {
             if (fileEntry.isDirectory()) {
                 listFilesForFolder(fileEntry);
             } else {
                 if (fileEntry.getName().endsWith(".eml")){
-                    Properties props = System.getProperties();
-                    props.put("mail.host", "***@***.com"); //your receiver mail
-                    props.put("mail.transport.protocol", "smtp");
 
-                    Session mailSession = Session.getDefaultInstance(props, null);
                     InputStream source = new FileInputStream(fileEntry);
-                    MimeMessage message = new MimeMessage(mailSession, source);
+                    MimeMessage message = new MimeMessage(null, source);
 
                     System.out.println("Subject : " + message.getSubject());
                     //System.out.println("From : " + message.getFrom()[0]);
@@ -126,6 +156,7 @@ public class EmailServiceImpl implements EMLFileService {
                         MimeBodyPart part = (MimeBodyPart) multiPart.getBodyPart(partCount);
                         if (Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
                             // byte[]  getBytes = IOUtils.toByteArray(part.getInputStream());
+                            if (part.getContentType().contains("message/rfc822"))
                             System.out.println(part.getFileName());
                             getBytes.add(IOUtils.toByteArray(part.getInputStream()));
 
